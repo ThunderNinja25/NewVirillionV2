@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _name: Bulbasaur
   description: 
-  frontSprite: {fileID: 21300000, guid: 0f37bf3cf5680a64d863b5f155b2a597, type: 3}
+  frontSprite: {fileID: 21300000, guid: 47b47ee13427d754d99524ecdf7be281, type: 3}
   backSprite: {fileID: 21300000, guid: aacaae602a38f884ab9e02e43de3736d, type: 3}
   type1: 5
   type2: 8
@@ -30,4 +30,6 @@ MonoBehaviour:
   - moveBase: {fileID: 11400000, guid: bc987b2f89c1efc47990a92755513688, type: 2}
     level: 4
   - moveBase: {fileID: 11400000, guid: 4aae2d87627127544bcbdfb8c4006deb, type: 2}
+    level: 7
+  - moveBase: {fileID: 11400000, guid: 3d06ffb71f3ad9e4a884c45a32113566, type: 2}
     level: 7

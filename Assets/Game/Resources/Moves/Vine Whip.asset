@@ -12,9 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 786d0376fe955fd40a5a0eefa6c5b680, type: 3}
   m_Name: Vine Whip
   m_EditorClassIdentifier: 
-  name: Vine Whip
+  _name: Vine Whip
   description: 
   type: 5
   power: 45
   accuracy: 100
   pp: 25
+  category: 1
+  effects:
+    boosts: []
+  target: 0
