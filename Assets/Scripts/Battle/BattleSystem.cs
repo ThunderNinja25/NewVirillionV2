@@ -5,7 +5,8 @@ using System.Dynamic;
 using UnityEngine;
 
 
-public enum BattleState { Start, ActionSelection, MoveSelection, PerformMove, Busy, PartyScreen, BattleOver}
+public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, BattleOver}
+public enum BattleAction { Move, SwitchCreature, UseItem, Run}
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] BattleUnit playerUnit;
@@ -16,6 +17,7 @@ public class BattleSystem : MonoBehaviour
     public event Action<bool> OnBattleOver;
 
     BattleState state;
+    BattleState? prevState;
     int currentAction;
     int currentMove;
     int currentMember;
@@ -41,19 +43,7 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogueBox.TypeDialogue($"A Wild {enemyUnit.Creature.Base.Name} appeared.");
 
-        ChooseFirstTurn();
-    }
-
-    void ChooseFirstTurn()
-    {
-        if(playerUnit.Creature.Speed >= enemyUnit.Creature.Speed)
-        {
-            ActionSelection();
-        }
-        else
-        {
-            StartCoroutine(EnemyMove());
-        }
+        ActionSelection();
     }
 
     void BattleOver(bool won)
@@ -85,33 +75,67 @@ public class BattleSystem : MonoBehaviour
         dialogueBox.EnableMoveSelector(true);
     }
 
-    IEnumerator PlayerMove()
+    IEnumerator RunTurns(BattleAction playerAction)
     {
-        state = BattleState.PerformMove;
+        state = BattleState.RunningTurn;
 
-        var move = playerUnit.Creature.Moves[currentMove];
-        yield return RunMove(playerUnit, enemyUnit, move);
-        
-        if(state == BattleState.PerformMove)
-            StartCoroutine(EnemyMove());
-    }
+        if (playerAction == BattleAction.Move)
+        {
+            playerUnit.Creature.CurrentMove = playerUnit.Creature.Moves[currentMove];
+            enemyUnit.Creature.CurrentMove = enemyUnit.Creature.GetRandomMove();
 
-    IEnumerator EnemyMove()
-    {
-        state = BattleState.PerformMove;
+            int playerMovePriority = playerUnit.Creature.CurrentMove.Base.Priority;
+            int enemyMovePriority = enemyUnit.Creature.CurrentMove.Base.Priority;
 
-        var move = enemyUnit.Creature.GetRandomMove();
+            //Check who goes first
+            bool playerGoesFirst = true;
+            if(enemyMovePriority > playerMovePriority)
+                playerGoesFirst = false;
+            else if(enemyMovePriority == playerMovePriority)
+                playerGoesFirst = playerUnit.Creature.Speed >= enemyUnit.Creature.Speed;
 
-        yield return RunMove(enemyUnit, playerUnit, move);
+            var firstUnit = (playerGoesFirst) ? playerUnit : enemyUnit;
+            var secondUnit = (playerGoesFirst) ? enemyUnit : playerUnit;
 
-        if (state == BattleState.PerformMove)
+            var secondCreature = secondUnit.Creature;
+
+            //First Turn
+            yield return RunMove(firstUnit, secondUnit, firstUnit.Creature.CurrentMove);
+            yield return RunAfterTurn(firstUnit);
+            if (state == BattleState.BattleOver) yield break;
+            
+            if(secondCreature.HP > 0)
+            {
+                //Second Turn
+                yield return RunMove(secondUnit, firstUnit, secondUnit.Creature.CurrentMove);
+                yield return RunAfterTurn(secondUnit);
+                if (state == BattleState.BattleOver) yield break;
+            }
+        }
+        else
+        {
+            if(playerAction == BattleAction.SwitchCreature)
+            {
+                var selectedCreature = playerParty.Creatures[currentMember];
+                state = BattleState.Busy;
+                yield return SwitchCreature(selectedCreature);
+            }
+
+            //Enemy Turn
+            var enemyMove = enemyUnit.Creature.GetRandomMove();
+            yield return RunMove(enemyUnit, playerUnit, enemyMove);
+            yield return RunAfterTurn(enemyUnit);
+            if (state == BattleState.BattleOver) yield break;
+        }
+
+        if (state != BattleState.BattleOver)
             ActionSelection();
     }
 
     IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
     {
         bool canRunMove = sourceUnit.Creature.OnBeforeMove();
-        if(!canRunMove)
+        if (!canRunMove)
         {
             yield return ShowStatusChanges(sourceUnit.Creature);
             yield return sourceUnit.Hud.UpdateHP();
@@ -139,9 +163,9 @@ public class BattleSystem : MonoBehaviour
                 yield return ShowDamageDetails(damageDetails);
             }
 
-            if(move.Base.Secondaries != null && move.Base.Secondaries.Count > 0 && targetUnit.Creature.HP > 0)
+            if (move.Base.Secondaries != null && move.Base.Secondaries.Count > 0 && targetUnit.Creature.HP > 0)
             {
-                foreach(var secondary in move.Base.Secondaries)
+                foreach (var secondary in move.Base.Secondaries)
                 {
                     var rnd = UnityEngine.Random.Range(1, 101);
                     if (rnd <= secondary.Chance)
@@ -164,18 +188,7 @@ public class BattleSystem : MonoBehaviour
             yield return dialogueBox.TypeDialogue($"{sourceUnit.Creature.Base.Name}'s attack missed");
         }
 
-        // Burn & Poison Statuses
-        sourceUnit.Creature.OnAfterTurn();
-        yield return ShowStatusChanges(sourceUnit.Creature);
-        yield return sourceUnit.Hud.UpdateHP();
-        if (sourceUnit.Creature.HP <= 0)
-        {
-            yield return dialogueBox.TypeDialogue($"{sourceUnit.Creature.Base.Name} Fainted");
-            sourceUnit.PlayFaintAnimation();
-            yield return new WaitForSeconds(2f);
 
-            CheckForBattleOver(sourceUnit);
-        }
     }
 
     IEnumerator RunMoveEffects(MoveEffects effects, Creature source, Creature target, MoveTarget moveTarget)
@@ -194,7 +207,7 @@ public class BattleSystem : MonoBehaviour
         }
 
         // Status Conditions
-        if(effects.Status != ConditionID.none)
+        if (effects.Status != ConditionID.none)
         {
             target.SetStatus(effects.Status);
         }
@@ -207,6 +220,25 @@ public class BattleSystem : MonoBehaviour
 
         yield return ShowStatusChanges(source);
         yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator RunAfterTurn(BattleUnit sourceUnit)
+    {
+        if (state == BattleState.BattleOver) yield break;
+        yield return new WaitUntil(() => state == BattleState.RunningTurn);
+
+        // Burn & Poison Statuses
+        sourceUnit.Creature.OnAfterTurn();
+        yield return ShowStatusChanges(sourceUnit.Creature);
+        yield return sourceUnit.Hud.UpdateHP();
+        if (sourceUnit.Creature.HP <= 0)
+        {
+            yield return dialogueBox.TypeDialogue($"{sourceUnit.Creature.Base.Name} Fainted");
+            sourceUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(sourceUnit);
+        }
     }
 
     bool CheckIfMoveHits(Move move, Creature source, Creature target)
@@ -324,6 +356,7 @@ public class BattleSystem : MonoBehaviour
             else if (currentAction == 2)
             {
                 //Creature
+                prevState = state;
                 OpenPartyScreen();
             }
             else if (currentAction == 3)
@@ -350,9 +383,12 @@ public class BattleSystem : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Z))
         {
+            var move = playerUnit.Creature.Moves[currentMove];
+            if (move.PP == 0) return;
+
             dialogueBox.EnableMoveSelector(false);
             dialogueBox.EnableDialogueText(true);
-            StartCoroutine(PlayerMove());
+            StartCoroutine(RunTurns(BattleAction.Move));
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
@@ -392,8 +428,17 @@ public class BattleSystem : MonoBehaviour
             }
 
             partyScreen.gameObject.SetActive(false);
-            state = BattleState.Busy;
-            StartCoroutine(SwitchCreature(selectedMember));
+
+            if(prevState == BattleState.ActionSelection)
+            {
+                prevState = null;
+                StartCoroutine(RunTurns(BattleAction.SwitchCreature));
+            }
+            else
+            {
+                state = BattleState.Busy;
+                StartCoroutine(SwitchCreature(selectedMember));
+            }
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
@@ -405,10 +450,8 @@ public class BattleSystem : MonoBehaviour
     IEnumerator SwitchCreature(Creature newCreature)
     {
         playerUnit.Creature.CureVolatileStatus();
-        bool currentCreatureFainted = true;
         if (playerUnit.Creature.HP > 0)
         {
-            currentCreatureFainted = false;
             yield return dialogueBox.TypeDialogue($"Come back {playerUnit.Creature.Base.Name}");
             playerUnit.PlayFaintAnimation();
             yield return new WaitForSeconds(2f);
@@ -418,9 +461,7 @@ public class BattleSystem : MonoBehaviour
         dialogueBox.SetMoveNames(newCreature.Moves);
 
         yield return dialogueBox.TypeDialogue($"Go {newCreature.Base.Name}!");
-        if(currentCreatureFainted)
-            ChooseFirstTurn();
-        else
-            StartCoroutine(EnemyMove());
+        
+        state = BattleState.RunningTurn;
     }
 }
