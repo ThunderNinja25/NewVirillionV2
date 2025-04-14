@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b62a8e74a325e4493956501c30341010
+guid: 5ee94151c726a4d4e8b55d799f6591f4
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -110,7 +110,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: hero_0
+      name: npc 1_0
       rect:
         serializedVersion: 2
         x: 0
@@ -124,14 +124,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7242c6a5090784b40a76b5a94afec74c
-      internalID: -472637529
+      spriteID: cc7c5e038f3252d40b1cd2336aab45a8
+      internalID: -786066894
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_1
+      name: npc 1_1
       rect:
         serializedVersion: 2
         x: 16
@@ -145,14 +145,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7bbfbb8a87016e44c892914293da5734
-      internalID: -622550298
+      spriteID: a52c20f83666c034dad39ac6db9c23fc
+      internalID: 902663277
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_2
+      name: npc 1_2
       rect:
         serializedVersion: 2
         x: 32
@@ -166,14 +166,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: dcbcef481b6e87249be611eb3b33a1dc
-      internalID: -1072075522
+      spriteID: 5e64e3694501c1540a9d90d8699f8457
+      internalID: -2111964533
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_3
+      name: npc 1_3
       rect:
         serializedVersion: 2
         x: 0
@@ -187,14 +187,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fd124afe5ca855e44aced3e186821fe1
-      internalID: -1508941286
+      spriteID: 03249707e41501d4b8b34a2f0e9e6f55
+      internalID: 2079229865
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_4
+      name: npc 1_4
       rect:
         serializedVersion: 2
         x: 16
@@ -208,14 +208,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 22545406c243b324f8b2bfb5468b2fed
-      internalID: 475879481
+      spriteID: 6d5391c373de6e6479eb152780b79c4c
+      internalID: -1492140078
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_5
+      name: npc 1_5
       rect:
         serializedVersion: 2
         x: 32
@@ -229,14 +229,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 9f3e55fbce910234593df0fba2742f47
-      internalID: -1292815734
+      spriteID: 9b3ffa0be8ea96942aa763fa4c4e75c4
+      internalID: -1227294291
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_6
+      name: npc 1_6
       rect:
         serializedVersion: 2
         x: 0
@@ -250,14 +250,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e5b7edfb9fb41f447af5d065654e5f70
-      internalID: 681760338
+      spriteID: 17c4aee23e336a745b81e08fbe278ca3
+      internalID: -2025819588
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_7
+      name: npc 1_7
       rect:
         serializedVersion: 2
         x: 16
@@ -271,14 +271,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d789606c5c0fa0943b354cec81ba2d64
-      internalID: -215442485
+      spriteID: 163149219103a804c80d04d2e616b5fe
+      internalID: -1774785498
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_8
+      name: npc 1_8
       rect:
         serializedVersion: 2
         x: 32
@@ -292,14 +292,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a7c3f740f64b5334cbfd72a710d4d20e
-      internalID: 1000489280
+      spriteID: f42eca75dc8e5e047820a5f0935089ae
+      internalID: -591308796
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_9
+      name: npc 1_9
       rect:
         serializedVersion: 2
         x: 0
@@ -313,14 +313,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ee95d086a9aaf1a4c87b00447943d167
-      internalID: 1028185543
+      spriteID: 90d4adc68e2b24a40bb0a99fba6c9b6e
+      internalID: 1549657758
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_10
+      name: npc 1_10
       rect:
         serializedVersion: 2
         x: 16
@@ -334,14 +334,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3c636906cd0f4e8469da5cbcc5a4921b
-      internalID: 64751753
+      spriteID: 6bb6f79dbbff1bf4ab516ae76003eb84
+      internalID: -542852551
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: hero_11
+      name: npc 1_11
       rect:
         serializedVersion: 2
         x: 32
@@ -355,8 +355,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c53219dec57fa5c40a15e029101351d6
-      internalID: -344726703
+      spriteID: a72baabfce5d4cb44975da9b3ef247f6
+      internalID: 211286345
       vertices: []
       indices: 
       edges: []
@@ -372,18 +372,18 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      hero_0: -472637529
-      hero_1: -622550298
-      hero_10: 64751753
-      hero_11: -344726703
-      hero_2: -1072075522
-      hero_3: -1508941286
-      hero_4: 475879481
-      hero_5: -1292815734
-      hero_6: 681760338
-      hero_7: -215442485
-      hero_8: 1000489280
-      hero_9: 1028185543
+      npc 1_0: -786066894
+      npc 1_1: 902663277
+      npc 1_10: -542852551
+      npc 1_11: 211286345
+      npc 1_2: -2111964533
+      npc 1_3: 2079229865
+      npc 1_4: -1492140078
+      npc 1_5: -1227294291
+      npc 1_6: -2025819588
+      npc 1_7: -1774785498
+      npc 1_8: -591308796
+      npc 1_9: 1549657758
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
