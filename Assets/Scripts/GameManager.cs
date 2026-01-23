@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { FreeRoam, Battle, Dialogue}
+public enum GameState { FreeRoam, Battle, Dialogue, Cutscene }
 public class GameManager : MonoBehaviour
 {
     [SerializeField] PlayerController playerController;
@@ -11,8 +11,11 @@ public class GameManager : MonoBehaviour
 
     GameState state;
 
+    public static GameManager Instance { get; private set; }
+
     private void Awake()
     {
+        Instance = this;
         ConditionsDB.Init();
     }
 
@@ -20,6 +23,16 @@ public class GameManager : MonoBehaviour
     {
         playerController.OnEncountered += StartBattle;
         battleSystem.OnBattleOver += EndBattle;
+
+        playerController.OnEnterTrainersView += (Collider2D trainerCollider) =>
+        {
+            var trainer = trainerCollider.GetComponentInParent<TrainerController>();
+            if (trainer != null)
+            {
+                state = GameState.Cutscene;
+                StartCoroutine(trainer.TriggerTrainerBattle(playerController));
+            }
+        };
 
         DialogueManager.Instance.OnShowDialogue += () =>
         {
@@ -43,6 +56,18 @@ public class GameManager : MonoBehaviour
         var wildCreature = FindObjectOfType<MapArea>().GetComponent<MapArea>().GetRandomWildCreature();
 
         battleSystem.StartBattle(playerParty, wildCreature);
+    }
+
+    public void StartTrainerBattle(TrainerController trainer)
+    {
+        state = GameState.Battle;
+        battleSystem.gameObject.SetActive(true);
+        mainCamera.gameObject.SetActive(false);
+
+        var playerParty = playerController.GetComponent<CreatureParty>();
+        var trainerParty = trainer.GetComponent<CreatureParty>();
+
+        battleSystem.StartTrainerBattle(playerParty, trainerParty);
     }
 
     void EndBattle(bool won)

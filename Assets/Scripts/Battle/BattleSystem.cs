@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Dynamic;
 using UnityEngine;
+using UnityEngine.UI;
 
 
 public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, BattleOver}
@@ -13,6 +14,8 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleUnit enemyUnit;
     [SerializeField] BattleDialogueBox dialogueBox;
     [SerializeField] PartyScreen partyScreen;
+    [SerializeField] Image playerImage;
+    [SerializeField] Image trainerImage;
 
     public event Action<bool> OnBattleOver;
 
@@ -23,7 +26,12 @@ public class BattleSystem : MonoBehaviour
     int currentMember;
 
     CreatureParty playerParty;
+    CreatureParty trainerParty;
     Creature wildCreature;
+
+    bool isTrainerBattle = false;
+    PlayerController player;
+    TrainerController trainer;
 
     public void StartBattle(CreatureParty playerParty, Creature wildCreature)
     {
@@ -32,17 +40,71 @@ public class BattleSystem : MonoBehaviour
         StartCoroutine(SetupBattle());
     }
 
+    public void StartTrainerBattle(CreatureParty playerParty, CreatureParty trainerParty)
+    {
+        this.playerParty = playerParty;
+        this.trainerParty = trainerParty;
+
+        isTrainerBattle = true;
+        player = playerParty.GetComponent<PlayerController>();
+        trainer = trainerParty.GetComponent<TrainerController>();
+
+        StartCoroutine(SetupBattle());
+    }
+
     public IEnumerator SetupBattle()
     {
-        playerUnit.Setup(playerParty.GetHealthyCreature());
-        enemyUnit.Setup(wildCreature);
+        playerUnit.Clear();
+        enemyUnit.Clear();
+
+        if (!isTrainerBattle)
+        {
+            // Wild Pokemon Battle
+            playerUnit.Setup(playerParty.GetHealthyCreature());
+            enemyUnit.Setup(wildCreature);
+
+            dialogueBox.SetMoveNames(playerUnit.Creature.Moves);
+            yield return dialogueBox.TypeDialogue($"A Wild {enemyUnit.Creature.Base.Name} appeared.");
+
+        }
+        else
+        {
+            // Trainer Battle
+
+            // Show player and trainer sprites
+            playerUnit.gameObject.SetActive(false);
+            enemyUnit.gameObject.SetActive(false);
+
+            playerImage.gameObject.SetActive(true);
+            trainerImage.gameObject.SetActive(true);
+
+            playerImage.sprite = player.Sprite;
+            trainerImage.sprite = trainer.Sprite;
+
+            yield return dialogueBox.TypeDialogue($"{trainer.name} wants to battle");
+
+
+            // Send out first pokemon of the trainer
+
+            trainerImage.gameObject.SetActive(false);
+            enemyUnit.gameObject.SetActive(true);
+            var enemyCreature = trainerParty.GetHealthyCreature();
+            enemyUnit.Setup(enemyCreature);
+            yield return dialogueBox.TypeDialogue($"{trainer.name} send out {enemyCreature.Base.Name}");
+
+
+            // Send out first pokemon of the player
+
+            playerImage.gameObject.SetActive(false);
+            playerUnit.gameObject.SetActive(true);
+            var playerCreature = playerParty.GetHealthyCreature();
+            playerUnit.Setup(playerCreature);
+            yield return dialogueBox.TypeDialogue($"Go {playerCreature.Base.Name}!");
+
+            dialogueBox.SetMoveNames(playerUnit.Creature.Moves);
+        }
 
         partyScreen.Init();
-
-        dialogueBox.SetMoveNames(playerUnit.Creature.Moves);
-
-        yield return dialogueBox.TypeDialogue($"A Wild {enemyUnit.Creature.Base.Name} appeared.");
-
         ActionSelection();
     }
 
@@ -291,7 +353,21 @@ public class BattleSystem : MonoBehaviour
         }
         else
         {
-            BattleOver(true);
+            if (!isTrainerBattle)
+            {
+                BattleOver(true);
+            }
+            else
+            {
+                var nextCreature = trainerParty.GetHealthyCreature();
+                if (nextCreature != null)
+                {
+                    // Send out next Creature
+                    StartCoroutine(SendNextTrainerCreature(nextCreature));
+                }
+                else
+                    BattleOver(true);
+            }
         }
     }
 
@@ -462,6 +538,16 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogueBox.TypeDialogue($"Go {newCreature.Base.Name}!");
         
+        state = BattleState.RunningTurn;
+    }
+
+    IEnumerator SendNextTrainerCreature(Creature nextCreature)
+    {
+        state = BattleState.Busy;
+
+        enemyUnit.Setup(nextCreature);
+        yield return dialogueBox.TypeDialogue($"{trainer.Name} send out {nextCreature.Base.Name}");
+
         state = BattleState.RunningTurn;
     }
 }
