@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 
-public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, BattleOver}
+public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, AboutToUse, BattleOver }
 public enum BattleAction { Move, SwitchCreature, UseItem, Run}
 public class BattleSystem : MonoBehaviour
 {
@@ -24,6 +24,7 @@ public class BattleSystem : MonoBehaviour
     int currentAction;
     int currentMove;
     int currentMember;
+    bool aboutToUseChoice = true;
 
     CreatureParty playerParty;
     CreatureParty trainerParty;
@@ -135,6 +136,15 @@ public class BattleSystem : MonoBehaviour
         dialogueBox.EnableActionSelector(false);
         dialogueBox.EnableDialogueText(false);
         dialogueBox.EnableMoveSelector(true);
+    }
+
+    IEnumerator AboutToUse(Creature newCreature)
+    {
+        state = BattleState.Busy;
+        yield return dialogueBox.TypeDialogue($"{trainer.Name} is about to use {newCreature.Base.Name}. Do you want to switch?");
+        
+        state = BattleState.AboutToUse;
+        dialogueBox.EnableChoiceBox(true);
     }
 
     IEnumerator RunTurns(BattleAction playerAction)
@@ -300,6 +310,7 @@ public class BattleSystem : MonoBehaviour
             yield return new WaitForSeconds(2f);
 
             CheckForBattleOver(sourceUnit);
+            yield return new WaitUntil(() => state == BattleState.RunningTurn);
         }
     }
 
@@ -363,7 +374,7 @@ public class BattleSystem : MonoBehaviour
                 if (nextCreature != null)
                 {
                     // Send out next Creature
-                    StartCoroutine(SendNextTrainerCreature(nextCreature));
+                    StartCoroutine(AboutToUse(nextCreature));
                 }
                 else
                     BattleOver(true);
@@ -400,6 +411,10 @@ public class BattleSystem : MonoBehaviour
         else if(state == BattleState.PartyScreen)
         {
             HandlePartySelection();
+        }
+        else if(state == BattleState.AboutToUse)
+        {
+            HandleAboutToUse();
         }
     }
 
@@ -518,8 +533,51 @@ public class BattleSystem : MonoBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
+            if (playerUnit.Creature.HP <= 0)
+            {
+                partyScreen.SetMessageText("You must choose a Creature to continue the battle!");
+                return;
+            }
+
             partyScreen.gameObject.SetActive(false);
-            ActionSelection();
+
+            if (prevState == BattleState.AboutToUse)
+            {
+                prevState = null;
+                StartCoroutine(SendNextTrainerCreature());
+            }
+            else
+                ActionSelection();
+        }
+    }
+
+    void HandleAboutToUse()
+    {
+        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+            aboutToUseChoice = !aboutToUseChoice;
+
+        dialogueBox.UpdateChoiceBox(aboutToUseChoice);
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            dialogueBox.EnableChoiceBox(false);
+            if (aboutToUseChoice)
+            {
+                // Yes, switch
+                prevState = BattleState.AboutToUse;
+                OpenPartyScreen();
+            }
+            else
+            {
+                // No, don't switch
+                StartCoroutine(SendNextTrainerCreature());
+            }
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            dialogueBox.EnableChoiceBox(false);
+            // No, don't switch
+            StartCoroutine(SendNextTrainerCreature());
         }
     }
 
@@ -538,13 +596,22 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogueBox.TypeDialogue($"Go {newCreature.Base.Name}!");
         
-        state = BattleState.RunningTurn;
+        if (prevState == null)
+        {
+            state = BattleState.RunningTurn;
+        }
+        else if (prevState == BattleState.AboutToUse)
+        {
+            prevState = null;
+            StartCoroutine(SendNextTrainerCreature());
+        }
     }
 
-    IEnumerator SendNextTrainerCreature(Creature nextCreature)
+    IEnumerator SendNextTrainerCreature()
     {
         state = BattleState.Busy;
 
+        var nextCreature = trainerParty.GetHealthyCreature();
         enemyUnit.Setup(nextCreature);
         yield return dialogueBox.TypeDialogue($"{trainer.Name} send out {nextCreature.Base.Name}");
 

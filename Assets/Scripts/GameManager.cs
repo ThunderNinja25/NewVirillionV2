@@ -58,12 +58,15 @@ public class GameManager : MonoBehaviour
         battleSystem.StartBattle(playerParty, wildCreature);
     }
 
+    TrainerController trainer;
+
     public void StartTrainerBattle(TrainerController trainer)
     {
         state = GameState.Battle;
         battleSystem.gameObject.SetActive(true);
         mainCamera.gameObject.SetActive(false);
 
+        this.trainer = trainer;
         var playerParty = playerController.GetComponent<CreatureParty>();
         var trainerParty = trainer.GetComponent<CreatureParty>();
 
@@ -72,6 +75,11 @@ public class GameManager : MonoBehaviour
 
     void EndBattle(bool won)
     {
+        if (trainer != null && won == true) {
+            trainer.BattleLost();
+            trainer = null;
+        }
+
         state = GameState.FreeRoam;
         battleSystem.gameObject.SetActive(false);
         mainCamera.gameObject.SetActive(true);

@@ -2,13 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TrainerController : MonoBehaviour
+public class TrainerController : MonoBehaviour, Interactable
 {
     [SerializeField] string name;
     [SerializeField] Sprite sprite;
     [SerializeField] Dialogue dialogue;
+    [SerializeField] Dialogue dialogueAfterBattle;
     [SerializeField] GameObject exclamation;
     [SerializeField] GameObject fov;
+
+    bool battleLost = false;
 
     Character character;
 
@@ -21,6 +24,35 @@ public class TrainerController : MonoBehaviour
     {
         SetFovRotation(character.Animator.DefaultDirection);
     }
+
+    private void Update()
+    {
+        character.HandleUpdate();
+    }
+
+    public void Interact(Transform initiator)
+    {
+        character.LookTowards(initiator.position);
+
+        if (!battleLost)
+        {
+            StartCoroutine(DialogueManager.Instance.ShowDialogue(dialogue, () =>
+            {
+                GameManager.Instance.StartTrainerBattle(this);
+            }));
+        }
+        else
+        {
+            StartCoroutine(DialogueManager.Instance.ShowDialogue(dialogueAfterBattle));
+        }
+    }
+
+    public void BattleLost()
+    {
+        battleLost = true;
+        fov.gameObject.SetActive(false);
+    }
+
 
     public IEnumerator TriggerTrainerBattle(PlayerController player)
     {
