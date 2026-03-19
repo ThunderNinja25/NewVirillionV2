@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro.EditorUtilities;
 using UnityEditorInternal;
 using UnityEngine;
 
@@ -10,11 +11,19 @@ public class Creature
     [SerializeField] CreatureBase _base;
     [SerializeField] int level;
 
+    public Creature(CreatureBase pBase, int pLevel)
+    {
+        _base = pBase;
+        level = pLevel;
+
+        Init();
+    }
+
     public CreatureBase Base {  get{ return _base; } }
     public int Level { get{ return level; } }
 
+    public int Exp { get; set; }
     public int HP { get; set; }
-
     public List<Move> Moves { get; set; }
     public Move CurrentMove { get; set; }
     public Dictionary<Stat, int> Stats { get; private set; }
@@ -24,7 +33,7 @@ public class Creature
     public Condition VolatileStatus { get; private set; }
     public int VolatileStatusTime { get; set; }
 
-    public Queue<string> StatusChanges { get; private set; } = new Queue<string>();
+    public Queue<string> StatusChanges { get; private set; }
     public bool HpChanged { get; set; }
     public event System.Action OnStatusChanged;
 
@@ -43,9 +52,13 @@ public class Creature
                 break;
             }
         }
+
+        Exp = Base.GetExpForLevel(Level);
+
         CalculateStats();
         HP = MaxHp;
 
+        StatusChanges = new Queue<string>();
         ResetStatBoost();
         Status = null;
         VolatileStatus = null;

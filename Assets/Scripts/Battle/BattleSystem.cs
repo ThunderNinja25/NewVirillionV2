@@ -1,7 +1,6 @@
+using DG.Tweening;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Dynamic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,6 +15,7 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] PartyScreen partyScreen;
     [SerializeField] Image playerImage;
     [SerializeField] Image trainerImage;
+    [SerializeField] GameObject ballSprite;
 
     public event Action<bool> OnBattleOver;
 
@@ -34,10 +34,14 @@ public class BattleSystem : MonoBehaviour
     PlayerController player;
     TrainerController trainer;
 
+    int escapeAttempts;
+
     public void StartBattle(CreatureParty playerParty, Creature wildCreature)
     {
         this.playerParty = playerParty;
         this.wildCreature = wildCreature;
+        player = playerParty.GetComponent<PlayerController>();
+
         StartCoroutine(SetupBattle());
     }
 
@@ -105,6 +109,7 @@ public class BattleSystem : MonoBehaviour
             dialogueBox.SetMoveNames(playerUnit.Creature.Moves);
         }
 
+        escapeAttempts = 0;
         partyScreen.Init();
         ActionSelection();
     }
@@ -186,11 +191,20 @@ public class BattleSystem : MonoBehaviour
         }
         else
         {
-            if(playerAction == BattleAction.SwitchCreature)
+            if (playerAction == BattleAction.SwitchCreature)
             {
                 var selectedCreature = playerParty.Creatures[currentMember];
                 state = BattleState.Busy;
                 yield return SwitchCreature(selectedCreature);
+            }
+            else if (playerAction == BattleAction.UseItem)
+            {
+                dialogueBox.EnableActionSelector(false);
+                yield return ThrowBall();
+            }
+            else if (playerAction == BattleAction.Run)
+            {
+                yield return TryToEscape();
             }
 
             //Enemy Turn
@@ -247,11 +261,7 @@ public class BattleSystem : MonoBehaviour
 
             if (targetUnit.Creature.HP <= 0)
             {
-                yield return dialogueBox.TypeDialogue($"{targetUnit.Creature.Base.Name} Fainted");
-                targetUnit.PlayFaintAnimation();
-                yield return new WaitForSeconds(2f);
-
-                CheckForBattleOver(targetUnit);
+                yield return HandleCreatureFainted(targetUnit);
             }
         }
 
@@ -305,11 +315,7 @@ public class BattleSystem : MonoBehaviour
         yield return sourceUnit.Hud.UpdateHP();
         if (sourceUnit.Creature.HP <= 0)
         {
-            yield return dialogueBox.TypeDialogue($"{sourceUnit.Creature.Base.Name} Fainted");
-            sourceUnit.PlayFaintAnimation();
-            yield return new WaitForSeconds(2f);
-
-            CheckForBattleOver(sourceUnit);
+            yield return HandleCreatureFainted(sourceUnit);
             yield return new WaitUntil(() => state == BattleState.RunningTurn);
         }
     }
@@ -346,6 +352,33 @@ public class BattleSystem : MonoBehaviour
             var message = creature.StatusChanges.Dequeue();
             yield return dialogueBox.TypeDialogue(message);
         }
+    }
+
+    IEnumerator HandleCreatureFainted(BattleUnit faintedUnit)
+    {
+        yield return dialogueBox.TypeDialogue($"{faintedUnit.Creature.Base.Name} Fainted");
+        faintedUnit.PlayFaintAnimation();
+        yield return new WaitForSeconds(2f);
+
+        if (!faintedUnit.IsPlayerUnit)
+        {
+            // Exp Gain
+            int expYield = faintedUnit.Creature.Base.ExpYield;
+            int enemyLevel = faintedUnit.Creature.Level;
+            float trainerBonus = (isTrainerBattle) ? 1.5f : 1;
+
+            int expGain = Mathf.FloorToInt((expYield * enemyLevel * trainerBonus) / 7);
+            playerUnit.Creature.Exp += expGain;
+            yield return dialogueBox.TypeDialogue($"{playerUnit.Creature.Base.Name} gained {expGain} exp");
+            yield return playerUnit.Hud.SetExpSmooth();
+
+            // Check Level Up
+
+
+            yield return new WaitForSeconds(1f);
+        }
+
+        CheckForBattleOver(faintedUnit);
     }
 
     void CheckForBattleOver(BattleUnit faintedUnit)
@@ -443,6 +476,7 @@ public class BattleSystem : MonoBehaviour
             else if(currentAction == 1)
             {
                 //Bag
+                StartCoroutine(RunTurns(BattleAction.UseItem));
             }
             else if (currentAction == 2)
             {
@@ -453,6 +487,7 @@ public class BattleSystem : MonoBehaviour
             else if (currentAction == 3)
             {
                 //Run
+                StartCoroutine(RunTurns(BattleAction.Run));
             }
         }
     }
@@ -613,8 +648,127 @@ public class BattleSystem : MonoBehaviour
 
         var nextCreature = trainerParty.GetHealthyCreature();
         enemyUnit.Setup(nextCreature);
-        yield return dialogueBox.TypeDialogue($"{trainer.Name} send out {nextCreature.Base.Name}");
+        yield return dialogueBox.TypeDialogue($"{trainer.Name} sends out {nextCreature.Base.Name}");
 
         state = BattleState.RunningTurn;
     }
+
+    IEnumerator ThrowBall()
+    {
+        state = BattleState.Busy;
+
+        if (isTrainerBattle)
+        {
+            yield return dialogueBox.TypeDialogue($"You can't steal the trainer's creature!");
+            state = BattleState.RunningTurn;
+            yield break;
+        }
+
+        yield return dialogueBox.TypeDialogue($"{player.Name} used Ball");
+
+        var ballObj = Instantiate(ballSprite, playerUnit.transform.position - new Vector3(2, 0), Quaternion.identity);
+        var ball = ballObj.GetComponent<SpriteRenderer>();
+
+        // Animations
+        yield return ball.transform.DOJump(enemyUnit.transform.position + new Vector3(0, 2), 2f, 1, 1f).WaitForCompletion();
+        yield return enemyUnit.PlayCaptureAnimation();
+        yield return ball.transform.DOMoveY(enemyUnit.transform.position.y - 1, 0.5f).WaitForCompletion();
+
+        int shakeCount = TryToCatchCreature(enemyUnit.Creature);
+
+        for (int i = 0; i < Mathf.Min(shakeCount, 3); i++)
+        {
+            yield return new WaitForSeconds(0.5f);
+            yield return ball.transform.DOPunchRotation(new Vector3(0, 0, 10), 0.8f).WaitForCompletion();
+        }
+
+        if (shakeCount == 4)
+        {
+            // Creature is caught
+            yield return dialogueBox.TypeDialogue($"{enemyUnit.Creature.Base.Name} was caught");
+            yield return ball.DOFade(0, 1.5f).WaitForCompletion();
+
+            playerParty.AddCreature(enemyUnit.Creature);
+            
+            yield return dialogueBox.TypeDialogue($"{enemyUnit.Creature.Base.Name} has been added to your party");
+
+            Destroy(ball.gameObject);
+            BattleOver(true);
+        }
+        else
+        {
+            // Creature broke out
+            yield return new WaitForSeconds(1f);
+            ball.DOFade(0, 0.2f);
+            yield return enemyUnit.PlayBreakoutAnimation();
+
+            if (shakeCount < 2)
+                yield return dialogueBox.TypeDialogue($"{enemyUnit.Creature.Base.Name} broke free");
+            else
+                yield return dialogueBox.TypeDialogue($"Almost caught it");
+
+            Destroy(ball.gameObject);
+            state = BattleState.RunningTurn;
+        }
+    }
+
+    int TryToCatchCreature(Creature creature)
+    {
+        float a = (3 * creature.MaxHp - 2 * creature.HP) * creature.Base.CatchRate * ConditionsDB.GetStatusBonus(creature.Status) / (3 * creature.MaxHp);
+
+        if (a >= 255)
+            return 4;
+
+        float b = 1048560 / Mathf.Sqrt(Mathf.Sqrt(16711680 / a));
+
+        int shakeCount = 0;
+        while (shakeCount < 4)
+        {
+            if (UnityEngine.Random.Range(0, 65535) >= b)
+                break;
+
+            shakeCount++;
+        }
+
+        return shakeCount;
+    }
+    IEnumerator TryToEscape()
+    {
+        state = BattleState.Busy;
+
+        if (isTrainerBattle)
+        {
+            yield return dialogueBox.TypeDialogue($"You can't run from trainer battles!");
+            state = BattleState.RunningTurn;
+            yield break;
+        }
+
+        escapeAttempts++;
+
+        int playerSpeed = playerUnit.Creature.Speed;
+        int enemySpeed = enemyUnit.Creature.Speed;
+
+        if (enemySpeed < playerSpeed)
+        {
+            yield return dialogueBox.TypeDialogue($"Ran away safely!");
+            BattleOver(true);
+        }
+        else
+        {
+            float f = (playerSpeed * 128) / enemySpeed + 30 * escapeAttempts;
+            f = f % 256;
+
+            if (UnityEngine.Random.Range(0, 256) < f)
+            {
+                yield return dialogueBox.TypeDialogue($"Ran away safely!");
+                BattleOver(true);
+            }
+            else
+            {
+                yield return dialogueBox.TypeDialogue($"Can't escape!");
+                state = BattleState.RunningTurn;
+            }
+        }
+    }
+
 }
