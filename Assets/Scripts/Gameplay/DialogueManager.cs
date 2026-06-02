@@ -31,7 +31,7 @@ public class DialogueManager : MonoBehaviour
     public IEnumerator ShowDialogue(Dialogue dialogue, Action onFinished = null)
     {
         yield return new WaitForEndOfFrame();
-        OnShowDialogue.Invoke();
+        OnShowDialogue?.Invoke();
 
         IsShowing = true;
         this.dialogue = dialogue;
@@ -56,7 +56,7 @@ public class DialogueManager : MonoBehaviour
                 currentLine = 0;
                 IsShowing = false;
                 dialogueBox.SetActive(false);
-                onDialogueFinished.Invoke();
+                onDialogueFinished?.Invoke();
                 OnCloseDialogue?.Invoke();
             }
         }

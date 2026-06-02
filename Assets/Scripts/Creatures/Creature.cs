@@ -47,7 +47,7 @@ public class Creature
             {
                 Moves.Add(new Move(move.Base));
             }
-            if(Moves.Count >= 4)
+            if(Moves.Count >= CreatureBase.MaxNumOfMoves)
             {
                 break;
             }
@@ -130,6 +130,33 @@ public class Creature
             Debug.Log($"{stat} has been boosted to {StatBoosts[stat]}");
         }
     }
+
+    public bool CheckForLevelUp()
+    {
+        if (Exp > Base.GetExpForLevel(level + 1))
+        {
+            level++;
+            return true;
+        }
+
+        return false;
+    }
+
+    public LearnableMove GetLearnableMoveAtCurrentLevel()
+    {
+        return Base.LearnableMoves.Where(x => x.Level == level).FirstOrDefault();
+    }
+
+    public void LearnMove(LearnableMove moveToLearn)
+    {
+        if (Moves.Count > CreatureBase.MaxNumOfMoves)
+        {
+            return;
+        }
+
+        Moves.Add(new Move(moveToLearn.Base));
+    }
+
 
     public int Attack {  get { return GetStat(Stat.Attack); } }
     public int Defense { get { return GetStat(Stat.Defense); } }
