@@ -16,7 +16,7 @@ TagManager:
   - Interactable
   - Player
   - FOVLayer
-  - 
+  - PortalLayer
   - 
   - 
   - 
@@ -55,3 +55,4 @@ TagManager:
     locked: 0
   m_RenderingLayers:
   - Default
+  m_MigratedRenderPipelines: []

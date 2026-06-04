@@ -8,11 +8,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] string name;
     [SerializeField] Sprite sprite;
 
-    const float offsetY = 0.3f;
-
-    public event Action OnEncountered;
-    public event Action<Collider2D> OnEnterTrainersView;
-
     private Vector2 input;
 
     private Character character;
@@ -48,8 +43,6 @@ public class PlayerController : MonoBehaviour
         var facingDir = new Vector3(character.Animator.MoveX, character.Animator.MoveY);
         var interactPos = transform.position + facingDir;
 
-        //Debug.DrawLine(transform.position, interactPos, Color.blue, 0.5f);
-
         var collider = Physics2D.OverlapCircle(interactPos, 0.3f, GameLayers.i.InteractableLayer);
         if(collider != null)
         {
@@ -59,29 +52,17 @@ public class PlayerController : MonoBehaviour
 
     private void OnMoveOver()
     {
-        CheckForEncounters();
-        CheckIfInTrainersView();
-    }
+        var colliders = Physics2D.OverlapCircleAll(transform.position - new Vector3(0, character.OffsetY), 0.2f, GameLayers.i.TriggerableLayers);
 
-    private void CheckForEncounters()
-    {
-        if(Physics2D.OverlapCircle(transform.position - new Vector3(0, offsetY), 0.2f, GameLayers.i.GrassLayer) != null)
+        foreach (var collider in colliders)
         {
-            if (UnityEngine.Random.Range(1, 101) <= 10)
+            var triggerable = collider.GetComponent<IPlayerTriggerable>();
+            if (triggerable != null)
             {
                 character.Animator.IsMoving = false;
-                OnEncountered();
+                triggerable.OnPlayerTriggered(this);
+                break;
             }
-        }
-    }
-
-    private void CheckIfInTrainersView()
-    {
-        var collider = Physics2D.OverlapCircle(transform.position - new Vector3(0, offsetY), 0.2f, GameLayers.i.FovLayer);
-        if (collider != null)
-        {
-            character.Animator.IsMoving = false;
-            OnEnterTrainersView?.Invoke(collider);
         }
     }
 
@@ -94,4 +75,6 @@ public class PlayerController : MonoBehaviour
     {
         get => sprite;
     }
+
+    public Character Character => character;
 }

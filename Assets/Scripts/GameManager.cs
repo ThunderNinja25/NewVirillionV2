@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { FreeRoam, Battle, Dialogue, Cutscene }
+public enum GameState { FreeRoam, Battle, Dialogue, Cutscene, Paused }
 public class GameManager : MonoBehaviour
 {
     [SerializeField] PlayerController playerController;
@@ -10,6 +10,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] Camera mainCamera;
 
     GameState state;
+
+    GameState stateBeforePause;
 
     public static GameManager Instance { get; private set; }
 
@@ -21,18 +23,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        playerController.OnEncountered += StartBattle;
         battleSystem.OnBattleOver += EndBattle;
-
-        playerController.OnEnterTrainersView += (Collider2D trainerCollider) =>
-        {
-            var trainer = trainerCollider.GetComponentInParent<TrainerController>();
-            if (trainer != null)
-            {
-                state = GameState.Cutscene;
-                StartCoroutine(trainer.TriggerTrainerBattle(playerController));
-            }
-        };
 
         DialogueManager.Instance.OnShowDialogue += () =>
         {
@@ -46,7 +37,20 @@ public class GameManager : MonoBehaviour
         };
     }
 
-    void StartBattle()
+    public void PauseGame(bool pause)
+    {
+        if (pause)
+        {
+            stateBeforePause = state;
+            state = GameState.Paused;
+        }
+        else
+        {
+            state = stateBeforePause;
+        }
+    }
+
+    public void StartBattle()
     {
         state = GameState.Battle;
         battleSystem.gameObject.SetActive(true);
@@ -73,6 +77,12 @@ public class GameManager : MonoBehaviour
         var trainerParty = trainer.GetComponent<CreatureParty>();
 
         battleSystem.StartTrainerBattle(playerParty, trainerParty);
+    }
+
+    public void OnEnterTrainersView(TrainerController trainer)
+    {
+        state = GameState.Cutscene;
+        StartCoroutine(trainer.TriggerTrainerBattle(playerController));
     }
 
     void EndBattle(bool won)
